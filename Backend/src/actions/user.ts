@@ -21,7 +21,7 @@ export class UserAdd extends Action {
   }
 
   async run({ params }: { params: any }) {
-    const { name, email,  password, confirmPassword, planLimit, dataUSed } = params;
+    const { name, email,  password, confirmPassword, planLimit, dataUsed } = params;
 
     if (password !== confirmPassword) {
       return { success: false, message: 'Passwords do not match.' };

@@ -14,7 +14,7 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
       get: [
         // { path: "/user", action: "userAdd" },
         { path: "/user", action: "userList" },
-        // { path: "/swagger", action: "swagger" },
+        { path: "/usage", action: "usage" },
         // { path: "/createChatRoom", action: "createChatRoom" },
       ],
 
