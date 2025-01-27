@@ -12,10 +12,15 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
   [namespace]: () => {
     return {
       get: [
-        { path: "/status", action: "status" },
-        { path: "/swagger", action: "swagger" },
-        { path: "/createChatRoom", action: "createChatRoom" },
+        // { path: "/user", action: "userAdd" },
+        { path: "/user", action: "userList" },
+        // { path: "/swagger", action: "swagger" },
+        // { path: "/createChatRoom", action: "createChatRoom" },
       ],
+
+      post: [
+        { path: '/user', action: "userAdd" } // (POST) 
+      ]
 
       /* ---------------------
       For web clients (http and https) you can define an optional RESTful mapping to help route requests to actions.

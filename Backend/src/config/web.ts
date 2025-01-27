@@ -111,7 +111,7 @@ export const DEFAULT = {
 export const production = {
   [namespace]: () => {
     return {
-      padding: null as number,
+      padding: null as number | null,
       metadataOptions: {
         serverInformation: false,
         requesterInformation: false,

@@ -1,4 +1,4 @@
-import { ActionProcessor, Connection } from "actionhero";
+import { ActionProcessor, Connection, Action } from "actionhero";
 
 const namespace = "errors";
 
@@ -46,7 +46,7 @@ export const DEFAULT = {
         },
         // See ActionProcessor#applyDefaultErrorLogLineFormat to see an example of how to customize
         actionProcessor:
-          null as ActionProcessor<any>["applyDefaultErrorLogLineFormat"],
+        null as unknown as ActionProcessor<Action>["applyDefaultErrorLogLineFormat"],
       },
 
       // ///////////

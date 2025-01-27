@@ -63,9 +63,9 @@ export const DEFAULT = {
       retryStuckJobs: false,
       // Customize Resque primitives, replace null with required replacement.
       resque_overrides: {
-        queue: null as Queue,
-        multiWorker: null as MultiWorker,
-        scheduler: null as Scheduler,
+        queue: null as Queue | null,
+        multiWorker: null as MultiWorker | null,
+        scheduler: null as Scheduler | null,
       },
       connectionOptions: {
         tasks: {},

@@ -1,20 +1,32 @@
-#!/usr/bin/env node
+import express from 'express';
+import { Process } from 'actionhero';
+import { sequelize } from '../models/index';
+require('dotenv').config();
 
-// load any custom code, configure the env, as needed
+const app = express();
 
 async function main() {
-  // create a new actionhero process
-  const { Process } = await import("actionhero");
-  const app = new Process();
+  try {
+    await sequelize.authenticate();
+    console.log("Database connected successfully.");
 
-  // handle unix signals and uncaught exceptions & rejections
-  app.registerProcessSignals((exitCode) => {
-    process.exit(exitCode);
-  });
+    await sequelize.sync({ alter: true });
 
-  // start the app!
-  // you can pass custom configuration to the process as needed
-  await app.start();
+    const actionhero = new Process();
+    await actionhero.start();
+    console.log("Actionhero server started.");
+
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
+    app.listen(8081, () => {
+      console.log("Custom server running on port 8080");
+    });
+
+  } catch (error) {
+    console.error("Error starting server:", error);
+    process.exit(1);
+  }
 }
 
 main();

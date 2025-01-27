@@ -23,7 +23,7 @@ export const DEFAULT = {
       apiVersion: packageJSON.version,
       serverName: packageJSON.name,
       // you can manually set the server id (not recommended)
-      id: undefined as string,
+      id: undefined as string | undefined,
       welcomeMessage: `Welcome to the ${packageJSON.name} api`,
       // A unique token to your application that servers will use to authenticate to each other
       serverToken: "change-me",
