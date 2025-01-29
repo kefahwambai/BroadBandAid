@@ -11,27 +11,47 @@ export class Usage extends Action {
     };
   }
 
-  async predictUpgrade(usage: number): Promise<number> {
-    const model = tf.sequential();
-    model.add(tf.layers.dense({ units: 10, activation: 'relu', inputShape: [1] }));
-    model.add(tf.layers.dense({ units: 1 }));
-    model.compile({  optimizer: tf.train.sgd(0.001), loss: 'meanSquaredError' });
+  private getUpgradePlan(usagePercentage: number): string {
+    if (usagePercentage >= 100) return "Gigabit Plan";
+    if (usagePercentage >= 80) return "Super Fast Plan";
+    if (usagePercentage >= 60) return "Unlimited Plan";
+    if (usagePercentage >= 40) return "Premium Plan";
+    return "Basic Plan";
+  }
 
-    const xs = tf.tensor1d([50, 60, 70, 80, 90, 100, 110, 120]).div(100);
-    const ys = tf.tensor1d([1, 1, 2, 2, 3, 3, 4, 5]).div(5);
+  private static model: tf.Sequential | null = null;
 
-    await model.fit(xs, ys, { epochs: 100 });
-    const prediction = model.predict(tf.tensor2d([usage], [1, 1])) as tf.Tensor;
+  private async getTrainedModel(): Promise<tf.Sequential> {
+    if (!Usage.model) {
+      console.log("Training model...");
+      Usage.model = tf.sequential();
+      Usage.model.add(tf.layers.dense({ units: 10, activation: 'relu', inputShape: [1] }));
+      Usage.model.add(tf.layers.dense({ units: 1 }));
+      Usage.model.compile({ optimizer: tf.train.sgd(0.001), loss: 'meanSquaredError' });
 
-    let predictedValue = prediction.dataSync()[0] * 5;
-    predictedValue = Math.max(1, Math.min(predictedValue, 5)); 
-  
-    return predictedValue;
+      const xs = tf.tensor1d([10, 30, 50, 70, 90, 100, 110, 120]).div(120);
+      const ys = tf.tensor1d([1, 2, 2, 3, 4, 4, 5, 5]).div(5);
+
+      await Usage.model.fit(xs, ys, { epochs: 200 });
+      console.log("Model trained.");
+    }
+    return Usage.model;
+  }
+
+  async predictUpgrade(usagePercentage: number): Promise<string> {
+    const trainedModel = await this.getTrainedModel();
+    const prediction = trainedModel.predict(tf.tensor2d([usagePercentage / 100], [1, 1])) as tf.Tensor;
+
+    let predictedValue = Math.round(prediction.dataSync()[0] * 5);
+    predictedValue = Math.max(1, Math.min(predictedValue, 5));
+
+    console.log(`Predicted Plan Level: ${predictedValue}`);
+    return this.getUpgradePlan(predictedValue * 20);
   }
 
   async run({ params, response }: { params: { userId: string }, response: { error?: string, usage?: object } }) {
     const userId = params.userId;
-    console.log('User ID:', userId);
+    console.log(`Processing request for User ID: ${userId}`);
 
     const query = `
       SELECT u.name, u."planLimit", u."dataUsed", p.name AS plan_name, p.price
@@ -49,23 +69,29 @@ export class Usage extends Action {
       const user = result.rows[0];
       const usagePercentage = (user.dataUsed / user.planLimit) * 100;
 
-      const predictedUpgrade = await this.predictUpgrade(usagePercentage);
+      console.log(`User ${userId} - Usage: ${usagePercentage.toFixed(2)}%`);
+      
+      const recommendedPlan = await this.predictUpgrade(usagePercentage);
 
       response.usage = {
         name: user.name,
-        plan: user.plan_name,
+        currentPlan: user.plan_name,
         usagePercentage: `${usagePercentage.toFixed(2)}%`,
         recommendation:
-        usagePercentage >= 100
-          ? `You have exceeded your plan limit! Predicted upgrade level: ${predictedUpgrade.toFixed(2)}`
-          : usagePercentage > 90
-          ? `Upgrade your plan to avoid overage charges. Predicted upgrade level: ${predictedUpgrade.toFixed(2)}`
-          : 'Your usage is within limits.',
+          usagePercentage >= 100
+            ? `You've exceeded your plan limit! Recommended upgrade: ${recommendedPlan}`
+            : usagePercentage > 75
+            ? `You're close to your limit. Consider upgrading to: ${recommendedPlan}`
+            : usagePercentage > 50
+            ? `You're at 50% usage. Keep track or upgrade to: ${recommendedPlan}`
+            : 'Your usage is within limits. No upgrade needed.',
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
+        console.error("Error fetching user data:", error.message);
         response.error = error.message;
       } else {
+        console.error("Unexpected error:", error);
         response.error = 'An unexpected error occurred.';
       }
     }
