@@ -12,15 +12,15 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
   [namespace]: () => {
     return {
       get: [
-        // { path: "/user", action: "userAdd" },
+        { path: "/plans", action: "getIspPlans" },
         { path: "/user", action: "userList" },
         { path: "/usage", action: "usage" },
         { path: "/diagnostic", action: "diagnostics" },
-        // { path: "/createChatRoom", action: "createChatRoom" },
+        { path: "/swagger", action: "swagger" },
       ],
 
       post: [
-        { path: '/user', action: "userAdd" } // (POST) 
+        { path: '/user', action: "userAdd" }
       ]
 
       /* ---------------------

@@ -1,5 +1,4 @@
 import { Action } from 'actionhero';
-import { ParamsFrom } from "actionhero";
 import User from '../../models/user';
 import  bcrypt  from 'bcrypt';
 

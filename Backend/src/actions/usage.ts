@@ -23,7 +23,6 @@ export class Usage extends Action {
 
   private async getTrainedModel(): Promise<tf.Sequential> {
     if (!Usage.model) {
-      console.log("Training model...");
       Usage.model = tf.sequential();
       Usage.model.add(tf.layers.dense({ units: 10, activation: 'relu', inputShape: [1] }));
       Usage.model.add(tf.layers.dense({ units: 1 }));
