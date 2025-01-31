@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../screens/home.dart';
+import '../screens/welcomeScreen.dart';
 
 class AppRoutes {
   static final Map<String, WidgetBuilder> routes = {
-    '/': (context) => const HomeScreen(),
+    '/': (context) => const WelcomeScreen(),
   };
 }
