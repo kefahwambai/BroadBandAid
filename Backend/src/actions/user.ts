@@ -1,6 +1,47 @@
 import { Action } from 'actionhero';
 import User from '../../models/user';
 import  bcrypt  from 'bcrypt';
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+export class UserLogin extends Action {
+  constructor() {
+    super();
+    this.name = "userLogin";
+    this.description = "User login action";
+    this.inputs = {
+      email: { required: true },
+      password: { required: true },
+    };
+  }
+
+  async run({ params }: { params: any }) {
+    const { email, password } = params;
+
+    try {
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        throw new Error("Invalid email or password.");
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new Error("Invalid email or password.");
+      }
+
+      const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET as string, {
+        expiresIn: "1h",
+      });
+
+      return { success: true, message: "Login successful.", token, user };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+}
+
 
 
 export class UserAdd extends Action {
@@ -57,7 +98,7 @@ export class UserList extends Action {
     try {
       const users = await User.findAll();
 
-      response.users = users.map((user) => user.name);
+      response.users = users.map((user) => user);
       response.success = true;
     } catch (error: any) {
       response.success = false;
