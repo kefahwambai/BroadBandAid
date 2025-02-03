@@ -19,7 +19,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool isLoading = false;
 
   Future<void> _signupUser() async {
-    final String apiUrl = 'http://localhost:8081/api/signup'; // Replace with your actual API URL
+    final String apiUrl = 'http://localhost:8081/api/user-signup';
 
     if (passwordController.text != confirmPasswordController.text) {
       _showMessage("Passwords do not match");

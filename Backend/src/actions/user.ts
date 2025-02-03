@@ -85,6 +85,38 @@ export class UserAdd extends Action {
   }
 }
 
+export class UserFetch extends Action {
+  constructor() {
+    super();
+    this.name = 'userFetch';
+    this.description = 'Fetch an individual user by ID';
+    this.inputs = {
+      id: { required: true },
+    };
+  }
+
+  async run({ params, response }: { params: any; response: any }) {
+    try {
+      const user = await User.findOne({ where: { id: Number(params.id) } });
+
+      
+
+      if (!user) {
+        response.success = false;
+        response.message = 'User not found.';
+        return;
+      }
+
+      response.success = true;
+      response.user = user;
+    } catch (error: any) {
+      console.error(`Database query failed: ${error.message}`);
+      response.success = false;
+      response.message = `Failed to fetch user: ${error.message}`;
+    }
+  }
+}
+
 export class UserList extends Action {
   constructor() {
     super();

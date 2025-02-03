@@ -13,7 +13,8 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
     return {
       get: [
         { path: "/plans", action: "getIspPlans" },
-        { path: "/user", action: "userList" },
+        { path: "/user", action: "userFetch" },
+        // { path: "/user", action: "userList" },
         { path: "/usage", action: "usage" },
         { path: "/diagnostic", action: "diagnostics" },
         { path: "/swagger", action: "swagger" },

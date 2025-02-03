@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'diagnostic.dart';
 import 'upgradePlan.dart';
 
+
 class HomeScreen extends StatefulWidget {
+  final int userId;
+  HomeScreen({required this.userId});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -12,96 +18,198 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   double usagePercentage = 0.0;
   bool isLoading = true;
+  int? userId;
+  final storage = FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
-    fetchDataUsage();
+    fetchUserInfo();
+  }
+
+  Future<void> fetchUserInfo() async {
+    try {
+      String? token = await storage.read(key: 'auth_token');
+      if (token != null) {
+        final decodedToken = Jwt.parseJwt(token);
+        setState(() {
+          userId = decodedToken['userId'];
+        });
+        fetchDataUsage();
+      } else {
+        throw Exception('Token not found');
+      }
+    } catch (e) {
+      print("Error fetching user info: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> fetchDataUsage() async {
-    final response =
-        await http.get(Uri.parse('http://localhost:8081/api/usage?userId=34'));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+    try {
+      final response = await http.get(Uri.parse('http://localhost:8081/api/usage?userId=$userId'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          usagePercentage = double.parse(data['usage']['usagePercentage'].replaceAll('%', ''));
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load data usage');
+      }
+    } catch (e) {
+      print("Error fetching data usage: $e");
       setState(() {
-        usagePercentage =
-            double.parse(data['usage']['usagePercentage'].replaceAll('%', ''));
         isLoading = false;
       });
-    } else {
-      throw Exception('Failed to load data usage');
     }
   }
 
   Future<void> runDiagnostics() async {
-    final response =
-        await http.get(Uri.parse('http://localhost:8081/api/diagnostic?userId=34'));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DiagnosticsScreen(result: data['data']),
-        ),
-      );
-    } else {
-      throw Exception('Failed to run diagnostics');
+    try {
+      final response = await http.get(Uri.parse('http://localhost:8081/api/diagnostic?userId=$userId'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DiagnosticsScreen(result: data['data']),
+          ),
+        );
+      } else {
+        throw Exception('Failed to run diagnostics');
+      }
+    } catch (e) {
+      print("Error running diagnostics: $e");
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('ISP Manager'),
-      ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('BroadBandAid'),
+    ),
+    body: isLoading
+        ? Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(  // Wrap Column with SingleChildScrollView
+            child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Your Data Usage',
+                    'Dashboard',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 20),
-                  LinearProgressIndicator(
-                    value: usagePercentage / 100,
-                    backgroundColor: Colors.grey,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    '$usagePercentage% of plan limit used',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: runDiagnostics,
-                    child: Text('Run Diagnostics'),
-                  ),
-                  SizedBox(height: 20),
-                  if (usagePercentage >= 80)
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PlanUpgradeScreen(),
-                          ),
-                        );
-                      },
-                      child: Text('Upgrade Plan'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                      ),
+
+                  // Grid Layout for Options
+                  GridView(
+                    shrinkWrap: true, // Make the GridView occupy only required space
+                    physics: NeverScrollableScrollPhysics(), // Disable GridView scrolling
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
                     ),
+                    children: [
+                      // _buildCard(
+                      //   title: 'Usage Details',
+                      //   icon: Icons.bar_chart,
+                      //   color: Colors.blue,
+                      //   onTap: () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => UsageScreen(userId: userId!),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      _buildCard(
+                        title: 'Run Diagnostics',
+                        icon: Icons.health_and_safety,
+                        color: Colors.green,
+                        onTap: runDiagnostics,
+                      ),
+                      _buildCard(
+                        title: 'Remaining Data',
+                        icon: Icons.data_usage,
+                        color: Colors.orange,
+                        onTap: () {},
+                        extraText: '${(100 - usagePercentage).toStringAsFixed(1)}% Remaining',
+                      ),
+                      if (usagePercentage >= 80)
+                        _buildCard(
+                          title: 'Upgrade Plan',
+                          icon: Icons.upgrade,
+                          color: Colors.red,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PlanUpgradeScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
+          ),
+  );
+}
+
+
+  Widget _buildCard({required String title, required IconData icon, required Color color, required VoidCallback onTap, String? extraText}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 4,
+        child: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: color.withOpacity(0.2),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 40, color: color),
+              SizedBox(height: 10),
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              if (extraText != null)
+                Text(extraText, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+}
+
+class Jwt {
+  static Map<String, dynamic> parseJwt(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) throw FormatException('Invalid JWT token');
+
+    final payload = _decodeBase64(parts[1]);
+    return jsonDecode(payload);
+  }
+
+  static String _decodeBase64(String base64Str) {
+    String output = base64Str;
+    if (output.length % 4 != 0) {
+      output += '=' * (4 - output.length % 4);
+    }
+    final decodedBytes = base64Url.decode(output);
+    return utf8.decode(decodedBytes);
   }
 }

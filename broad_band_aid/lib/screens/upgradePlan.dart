@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'loginScreen.dart'; // Import login screen
-import 'signUpScreen.dart'; // Import signup screen
+import 'loginScreen.dart';
+import 'signUpScreen.dart';
+import 'home.dart';
 
 class PlanUpgradeScreen extends StatefulWidget {
+  final String? userId; 
+
+  PlanUpgradeScreen({this.userId});
+
   @override
   _PlanUpgradeScreenState createState() => _PlanUpgradeScreenState();
 }
@@ -16,7 +21,13 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
   @override
   void initState() {
     super.initState();
-    fetchPlans();
+    if (widget.userId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToAuth(context);
+      });
+    } else {
+      fetchPlans();
+    }
   }
 
   Future<void> fetchPlans() async {
@@ -43,14 +54,16 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: (context) => const LoginScreen()));
               },
               child: const Text("Login"),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const SignupScreen()));
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: (context) => const SignupScreen()));
               },
               child: const Text("Sign Up"),
             ),
@@ -89,7 +102,13 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
                       style: const TextStyle(fontSize: 16, color: Colors.black87),
                     ),
                     trailing: ElevatedButton.icon(
-                      onPressed: () => _navigateToAuth(context),
+                      onPressed: () {
+                        if (widget.userId == null) {
+                          _navigateToAuth(context);
+                        } else {
+                          _choosePlan(plan);
+                        }
+                      },
                       icon: const Icon(Icons.check),
                       label: const Text('Choose'),
                       style: ElevatedButton.styleFrom(
@@ -102,5 +121,9 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
               },
             ),
     );
+  }
+
+  void _choosePlan(plan) {
+    print('Chosen plan: ${plan['name']}');
   }
 }
