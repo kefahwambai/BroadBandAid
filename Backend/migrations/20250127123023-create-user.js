@@ -28,6 +28,22 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: true,
       },
+      expiryDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      timeLimit: {
+        type: Sequelize.FLOAT,
+        defaultValue: 0, 
+      },
+      dataUsed: {
+        type: Sequelize.FLOAT,
+        defaultValue: 0, 
+      },
+      dataLimit: {
+        type: Sequelize.FLOAT,
+        allowNull: false, 
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

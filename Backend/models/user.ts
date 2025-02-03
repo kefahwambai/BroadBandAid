@@ -1,14 +1,16 @@
 import { Model, DataTypes } from 'sequelize';
-import { sequelize } from '../models/index';  
+import { sequelize } from '../models/index';
 
 class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
   public password!: string;
-  public confirmPassword!: string; 
   public planLimit!: number;
+  public expiryDate!: Date;
   public dataUsed!: number;
+  public timeLimit!: number; 
+  public dataLimit!: number;
 }
 
 User.init(
@@ -25,29 +27,37 @@ User.init(
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: false,
+      unique: true,
     },
     password: {
       type: DataTypes.STRING,
-      allowNull: false, 
-    },
-    confirmPassword: {
-      type: DataTypes.STRING,
-      allowNull: false,  
+      allowNull: false,
     },
     planLimit: {
       type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
+    expiryDate: {
+      type: DataTypes.DATE,
       allowNull: true,
+    },
+    timeLimit: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0, 
     },
     dataUsed: {
       type: DataTypes.FLOAT,
-      defaultValue: 0,
+      defaultValue: 0, 
+    },
+    dataLimit: {
+      type: DataTypes.FLOAT,
+      allowNull: false, 
     },
   },
   {
-    sequelize, 
+    sequelize,
     tableName: 'Users',
-    timestamps: true, 
+    timestamps: true,
   }
 );
 

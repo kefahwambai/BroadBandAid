@@ -18,11 +18,16 @@ module.exports = {
       dataLimit: {
         type: Sequelize.FLOAT
       },
-      speed: {
-        type: Sequelize.FLOAT
-      },
       provider: {
         type: Sequelize.STRING
+      },
+      timeLimit: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        validate: {
+          min: 1, 
+          max: 720, 
+        },
       },
       createdAt: {
         allowNull: false,

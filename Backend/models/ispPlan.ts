@@ -1,16 +1,23 @@
 import { Model, DataTypes } from 'sequelize';
-import { sequelize } from '../models/index';  
+import { sequelize } from '../models/index';
 
 class ISPPlan extends Model {
+  public id!: number;
   public name!: string;
   public price!: number;
   public dataLimit!: number;
   public speed!: number;
   public provider!: string;
+  public timeLimit!: number; 
 }
 
 ISPPlan.init(
   {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -23,15 +30,23 @@ ISPPlan.init(
       type: DataTypes.FLOAT,
       allowNull: false,
     },
-    speed: {
-      type: DataTypes.FLOAT,
+    provider: {
+      type: DataTypes.STRING,
       allowNull: false,
+    },
+    timeLimit: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        min: 1, 
+        max: 720, 
+      },
     },
   },
   {
-    sequelize, 
+    sequelize,
     tableName: 'ISPPlans',
-    timestamps: true,  
+    timestamps: true,
   }
 );
 

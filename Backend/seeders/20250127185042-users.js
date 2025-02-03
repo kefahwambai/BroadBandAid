@@ -14,6 +14,12 @@ module.exports = {
     const hashedPassword9 = bcrypt.hashSync('password718', 10);
     const hashedPassword10 = bcrypt.hashSync('password192', 10);
 
+    const addTime = (hours) => {
+      const date = new Date();
+      date.setHours(date.getHours() + hours);
+      return date;
+    };
+
     await queryInterface.bulkInsert('Users', [
       {
         name: 'John Maken',
@@ -22,6 +28,9 @@ module.exports = {
         confirmPassword: hashedPassword1,
         planLimit: 10,
         dataUsed: 8,
+        dataLimit: 10, 
+        timeLimit: 1,
+        expiryDate: addTime(1),
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -32,6 +41,9 @@ module.exports = {
         confirmPassword: hashedPassword2,
         planLimit: 30,
         dataUsed: 5,
+        dataLimit: 30, 
+        timeLimit: 24,
+        expiryDate: addTime(24),
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -42,6 +54,9 @@ module.exports = {
         confirmPassword: hashedPassword3,
         planLimit: 100,
         dataUsed: 40,
+        dataLimit: 100, 
+        timeLimit: 720,
+        expiryDate: addTime(720), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -52,6 +67,8 @@ module.exports = {
         confirmPassword: hashedPassword4,
         planLimit: 100,
         dataUsed: 70,
+        dataLimit: 720, 
+        expiryDate: addTime(720), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -62,6 +79,9 @@ module.exports = {
         confirmPassword: hashedPassword5,
         planLimit: 30,
         dataUsed: 12,
+        dataLimit: 30, 
+        timeLimit: 24,
+        expiryDate: addTime(24), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -72,6 +92,9 @@ module.exports = {
         confirmPassword: hashedPassword6,
         planLimit: 50,
         dataUsed: 15,
+        dataLimit: 50, 
+        timeLimit: 168,
+        expiryDate: addTime(168), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -82,6 +105,9 @@ module.exports = {
         confirmPassword: hashedPassword7,
         planLimit: 50,
         dataUsed: 20,
+        dataLimit: 50, 
+        timeLimit: 168,
+        expiryDate: addTime(168), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -92,6 +118,9 @@ module.exports = {
         confirmPassword: hashedPassword8,
         planLimit: 100,
         dataUsed: 20,
+        dataLimit: 100, 
+        timeLimit: 720,
+        expiryDate: addTime(720), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -102,6 +131,9 @@ module.exports = {
         confirmPassword: hashedPassword9,
         planLimit: 80,
         dataUsed: 65,
+        dataLimit: 80,
+        timeLimit: 720, 
+        expiryDate: addTime(720), 
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -112,6 +144,9 @@ module.exports = {
         confirmPassword: hashedPassword10,
         planLimit: 100,
         dataUsed: 35,
+        dataLimit: 100,
+        timeLimit: 720, 
+        expiryDate: addTime(168), 
         createdAt: new Date(),
         updatedAt: new Date(),
       }

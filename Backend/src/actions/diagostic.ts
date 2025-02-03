@@ -14,8 +14,8 @@ export class Diagnostics extends Action {
   async run({ params, response }: { params: { userId: string }, response: { error?: string; data?: object } }) {
     
     
-    const pingResult = 'Ping Success';
-    const signalStrength = 'Good Signal Strength';
+    const pingResult = Math.floor(Math.random() * 100); 
+    const signalStrength = Math.floor(Math.random() * 100 - 100);
 
     try {
       const usageInstance = new Usage();

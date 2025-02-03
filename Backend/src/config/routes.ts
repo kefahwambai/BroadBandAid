@@ -14,7 +14,8 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
       get: [
         { path: "/plans", action: "getIspPlans" },
         { path: "/user", action: "userFetch" },
-        // { path: "/user", action: "userList" },
+        {path: "/user-plan", action: "getIspPlan"},
+        { path: "/users", action: "userList" },
         { path: "/usage", action: "usage" },
         { path: "/diagnostic", action: "diagnostics" },
         { path: "/swagger", action: "swagger" },
@@ -22,7 +23,8 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
 
       post: [
         { path: '/user-signup', action: "userAdd" },
-        { path: '/user-login', action: "userLogin" }
+        { path: '/user-login', action: "userLogin" },
+        { path: '/update-plan', action: 'updatePlan' },
       ]
 
       /* ---------------------

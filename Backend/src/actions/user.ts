@@ -1,16 +1,16 @@
 import { Action } from 'actionhero';
 import User from '../../models/user';
-import  bcrypt  from 'bcrypt';
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
 export class UserLogin extends Action {
   constructor() {
     super();
-    this.name = "userLogin";
-    this.description = "User login action";
+    this.name = 'userLogin';
+    this.description = 'User login action';
     this.inputs = {
       email: { required: true },
       password: { required: true },
@@ -19,66 +19,89 @@ export class UserLogin extends Action {
 
   async run({ params }: { params: any }) {
     const { email, password } = params;
-
+  
     try {
-      const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({ where: { email: email.toLowerCase() } });
       if (!user) {
-        throw new Error("Invalid email or password.");
+        return { success: false, message: 'Invalid email or password.' };
       }
-
+  
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        throw new Error("Invalid email or password.");
+        return { success: false, message: 'Invalid email or password.' };
       }
-
-      const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET as string, {
-        expiresIn: "1h",
-      });
-
-      return { success: true, message: "Login successful.", token, user };
+  
+      const token = jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '1h' }
+      );
+  
+      return {
+        success: true,
+        message: 'Login successful.',
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          planLimit: user.planLimit,
+          dataUsed: user.dataUsed,
+          expiryDate: user.expiryDate,
+          timeLimit: user.timeLimit,
+        },
+      };
     } catch (error: any) {
-      return { success: false, message: error.message };
+      return { success: false, message: 'An error occurred. Please try again.' };
     }
   }
+  
 }
-
-
 
 export class UserAdd extends Action {
   constructor() {
     super();
     this.name = 'userAdd';
     this.description = 'Create a new user';
-    
+
     this.inputs = {
-      name: { required: true }, 
+      name: { required: true },
       email: { required: true },
       password: { required: true },
-      confirmPassword: { required: true }, 
-      dataUsed: {required: false},
+      confirmPassword: { required: true },
+      dataUsed: { required: false },
       planLimit: { required: false },
+      timeLimit: { required: false },
+      expiryDate: { required: false },
+      dataLimit: { required: true }, 
     };
   }
 
   async run({ params }: { params: any }) {
-    const { name, email,  password, confirmPassword, planLimit, dataUsed } = params;
+    const { name, email, password, confirmPassword, planLimit, dataUsed, dataLimit } = params;
 
     if (password !== confirmPassword) {
       return { success: false, message: 'Passwords do not match.' };
     }
 
     try {
-      const hashedPassword = await bcrypt.hash(password, 10); 
+      const hashedPassword = await bcrypt.hash(password, 10);
       const newUser = await User.create({
         name,
-        email,
+        email: email.toLowerCase(),
         password: hashedPassword,
         confirmPassword: hashedPassword,
         planLimit,
-        dataUsed
+        dataUsed,
+        expiryDate: params.expiryDate,
+        timeLimit: params.timeLimit,
+        dataLimit,
       });
 
-      return { message: `User ${newUser.name} created successfully.`, user: newUser };
+      return {
+        message: `User ${newUser.name} created successfully.`,
+        user: newUser,
+      };
     } catch (error: any) {
       return { message: `Failed to create user: ${error.message}`, status: 'fail' };
     }
@@ -99,8 +122,6 @@ export class UserFetch extends Action {
     try {
       const user = await User.findOne({ where: { id: Number(params.id) } });
 
-      
-
       if (!user) {
         response.success = false;
         response.message = 'User not found.';
@@ -108,7 +129,16 @@ export class UserFetch extends Action {
       }
 
       response.success = true;
-      response.user = user;
+      response.user = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        planLimit: user.planLimit,
+        dataUsed: user.dataUsed,
+        dataLeft: user.dataLimit - user.dataUsed,
+        expiryDate: user.expiryDate,
+        timeLimit: user.timeLimit,
+      };
     } catch (error: any) {
       console.error(`Database query failed: ${error.message}`);
       response.success = false;
@@ -122,7 +152,7 @@ export class UserList extends Action {
     super();
     this.name = 'userList';
     this.description = 'List all the users';
-    
+
     this.inputs = {};
   }
 
