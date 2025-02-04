@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -18,15 +19,24 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
   List<dynamic> plans = [];
   bool isLoading = true;
   Map<String, dynamic>? selectedPlan; 
+  final storage = FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
     fetchPlans();
   }
-
   Future<void> fetchPlans() async {
-    final response = await http.get(Uri.parse('http://localhost:8081/api/plans'));
+  try {
+    String? token = await storage.read(key: 'auth_token');
+    if (token == null) throw Exception('Authentication token not found');
+
+    print("Token: $token"); 
+
+    final response = await http.get(
+      Uri.parse('http://localhost:8081/api/plans'),
+    );
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       setState(() {
@@ -36,7 +46,13 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
     } else {
       throw Exception('Failed to load plans');
     }
+  } catch (e) {
+    print("Error fetching plans: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
+}
 
   String convertTime(int timeLimitInHours) {
     if (timeLimitInHours < 24) {

@@ -15,12 +15,21 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final storage = FlutterSecureStorage();
+  String? userId;
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _fetchUserId();
     _checkAuthToken();
+  }
+
+  Future<void> _fetchUserId() async {
+    String? storedUserId = await storage.read(key: 'user_id');
+    setState(() {
+      userId = storedUserId;
+    });
   }
 
   Future<void> _checkAuthToken() async {
@@ -64,10 +73,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   void _navigateToUpgradePlan(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PlanUpgradeScreen()),
-    );
+    if (userId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlanUpgradeScreen(userId: userId!),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("User ID not found. Please log in again.")),
+      );
+    }
   }
 
   @override

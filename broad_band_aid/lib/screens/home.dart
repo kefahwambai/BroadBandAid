@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'loginScreen.dart';
 import 'diagnostic.dart';
@@ -14,8 +15,24 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
+String formatTimeLimit(int timeLimitInHours) {
+  if (timeLimitInHours < 24) {
+    return '$timeLimitInHours hour${timeLimitInHours > 1 ? 's' : ''}';
+  } else if (timeLimitInHours < 168) {
+    final days = timeLimitInHours ~/ 24;
+    return '$days day${days > 1 ? 's' : ''}';
+  } else if (timeLimitInHours < 720) {
+    final weeks = timeLimitInHours ~/ 168;
+    return '$weeks week${weeks > 1 ? 's' : ''}';
+  } else {
+    final months = timeLimitInHours ~/ 720;
+    return '$months month${months > 1 ? 's' : ''}';
+  }
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   double usagePercentage = 0.0;
+  Timer? _usageSimulationTimer;
   bool isLoading = true;
   int? userId;
   String planName = '';
@@ -27,6 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     fetchUserInfo();
+    _startDataUsageSimulation();
+  }
+
+  @override
+  void dispose() {
+    _usageSimulationTimer?.cancel(); 
+    super.dispose();
   }
 
   Future<void> fetchUserInfo() async {
@@ -102,7 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = jsonDecode(response.body);
         setState(() {
           planName = data['plan']['name'];
-          timeLimit = data['plan']['timeLimit'].toString();
+          timeLimit =
+              formatTimeLimit(int.parse(data['plan']['timeLimit'].toString()));
           provider = data['plan']['provider'];
         });
       } else {
@@ -133,7 +158,44 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  @override
+ void _startDataUsageSimulation() {
+  if (_usageSimulationTimer != null && _usageSimulationTimer!.isActive) {
+    return;
+  }
+
+  _usageSimulationTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8081/api/simulateUsage'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'userId': widget.userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        double currentUsagePercentage = double.tryParse(
+                  data['usage']['usagePercentage'].replaceAll('%', '')) ??
+              0.0;
+
+        setState(() {
+          usagePercentage = currentUsagePercentage;
+        });
+
+        if (currentUsagePercentage >= 100) {
+          _usageSimulationTimer?.cancel(); 
+        }
+      } else {
+        throw Exception('Failed to simulate data usage');
+      }
+    } catch (e) {
+      print("Error simulating data usage: $e");
+    }
+  });
+}
+
+
+
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -161,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey,
                       onTap: () {},
                       extraText:
-                          'Plan: $planName\nProvider: $provider\nFor: $timeLimit hr',
+                          'Plan: $planName\nProvider: $provider\nTime Limit: $timeLimit',
                     ),
                     if (usagePercentage >= 80)
                       _buildCard(
@@ -172,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => PlanUpgradeScreen(),
+                              builder: (context) => PlanUpgradeScreen(userId: userId.toString()), 
                             ),
                           );
                         },
@@ -183,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Expanded(
                           child: _buildCard(
-                            title: 'Run Diagnostics',
+                            title: 'Data Health',
                             icon: Icons.health_and_safety,
                             color: Colors.green,
                             onTap: runDiagnostics,
@@ -216,8 +278,6 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
     String? extraText,
   }) {
-    if (extraText != null) {}
-
     return GestureDetector(
       onTap: onTap,
       child: Card(
