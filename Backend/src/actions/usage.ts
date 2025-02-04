@@ -1,11 +1,11 @@
-import { Action, api } from 'actionhero';
-import * as tf from '@tensorflow/tfjs-node';
+import { Action, api } from "actionhero";
+import * as tf from "@tensorflow/tfjs-node";
 
 export class Usage extends Action {
   constructor() {
     super();
-    this.name = 'usage';
-    this.description = 'Fetch user usage and recommend plans';
+    this.name = "usage";
+    this.description = "Fetch user usage and recommend plans";
     this.inputs = {
       userId: { required: true },
     };
@@ -21,25 +21,34 @@ export class Usage extends Action {
 
   private static model: tf.Sequential | null = null;
 
-  private async getTrainedModel(): Promise<tf.Sequential> {
+  private static async trainModel(): Promise<void> {
     if (!Usage.model) {
       Usage.model = tf.sequential();
-      Usage.model.add(tf.layers.dense({ units: 10, activation: 'relu', inputShape: [1] }));
+      Usage.model.add(
+        tf.layers.dense({ units: 10, activation: "relu", inputShape: [1] })
+      );
       Usage.model.add(tf.layers.dense({ units: 1 }));
-      Usage.model.compile({ optimizer: tf.train.sgd(0.001), loss: 'meanSquaredError' });
+      Usage.model.compile({
+        optimizer: tf.train.sgd(0.001),
+        loss: "meanSquaredError",
+      });
 
       const xs = tf.tensor1d([10, 30, 50, 70, 90, 100, 110, 120]).div(120);
       const ys = tf.tensor1d([1, 2, 2, 3, 4, 4, 5, 5]).div(5);
 
       await Usage.model.fit(xs, ys, { epochs: 200 });
-      console.log("Model trained.");
+      console.log("AI Model trained.");
     }
-    return Usage.model;
   }
 
   async predictUpgrade(usagePercentage: number): Promise<string> {
-    const trainedModel = await this.getTrainedModel();
-    const prediction = trainedModel.predict(tf.tensor2d([usagePercentage / 100], [1, 1])) as tf.Tensor;
+    if (!Usage.model) {
+      await Usage.trainModel();
+    }
+
+    const prediction = Usage.model!.predict(
+      tf.tensor2d([usagePercentage / 100], [1, 1])
+    ) as tf.Tensor;
 
     let predictedValue = Math.round(prediction.dataSync()[0] * 5);
     predictedValue = Math.max(1, Math.min(predictedValue, 5));
@@ -48,8 +57,13 @@ export class Usage extends Action {
     return this.getUpgradePlan(predictedValue * 20);
   }
 
-  async run({ params, response }: { params: { userId: string }, response: { error?: string, usage?: object } }) {
-    const userId = params.userId;
+  async run(data: {
+    params: { userId: string };
+    response: { error?: string; usage?: object };
+  }) {
+    const { params, response } = data;
+    const { userId } = params;
+
     console.log(`Processing request for User ID: ${userId}`);
 
     const query = `
@@ -62,14 +76,14 @@ export class Usage extends Action {
     try {
       const result = await api.database.pool.query(query, [userId]);
       if (result.rows.length === 0) {
-        throw new Error('User not found.');
+        throw new Error("User not found.");
       }
 
       const user = result.rows[0];
       const usagePercentage = (user.dataUsed / user.planLimit) * 100;
 
       console.log(`User ${userId} - Usage: ${usagePercentage.toFixed(2)}%`);
-      
+
       const recommendedPlan = await this.predictUpgrade(usagePercentage);
 
       response.usage = {
@@ -83,7 +97,7 @@ export class Usage extends Action {
             ? `You're close to your limit. Consider upgrading to: ${recommendedPlan}`
             : usagePercentage > 50
             ? `You're at 50% usage. Keep track or upgrade to: ${recommendedPlan}`
-            : 'Your usage is within limits. No upgrade needed.',
+            : "Your usage is within limits. No upgrade needed.",
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -91,7 +105,7 @@ export class Usage extends Action {
         response.error = error.message;
       } else {
         console.error("Unexpected error:", error);
-        response.error = 'An unexpected error occurred.';
+        response.error = "An unexpected error occurred.";
       }
     }
   }
