@@ -11,12 +11,14 @@ class DiagnosticsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Diagnostics Results'),
         backgroundColor: Colors.blueAccent,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 4,
+          elevation: 6,
+          shadowColor: Colors.blueAccent.withOpacity(0.2),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -24,23 +26,31 @@ class DiagnosticsScreen extends StatelessWidget {
               children: [
                 const Text(
                   'Diagnostic Test Result',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
+                  ),
                 ),
-                const Divider(thickness: 1),
-                const SizedBox(height: 10),
-                _buildInfoRow('Ping', '${result['connectivity']['ping']} ms'),
-                _buildInfoRow('Signal Strength', '${result['connectivity']['signalStrength']} dBm'),
-                _buildInfoRow('Usage', '${result['usage']} GB'),
-                _buildInfoRow('Recommendations', result['recommendations']),
-                const SizedBox(height: 20),
+                const Divider(thickness: 1, color: Colors.grey),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.speed, 'Ping', '${result['connectivity']['ping']} ms'),
+                _buildInfoRow(Icons.signal_cellular_alt, 'Signal Strength', '${result['connectivity']['signalStrength']} dBm'),
+                _buildInfoRow(Icons.data_usage, 'Usage', result['usage']['usagePercentage']),
+                _buildInfoRow(Icons.recommend, 'Recommendations', result['usage']['recommendation']),
+                const SizedBox(height: 24),
                 Center(
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.home),
+                    icon: const Icon(Icons.home, size: 20),
                     label: const Text('Back to Home'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -52,13 +62,38 @@ class DiagnosticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String title, String value) {
+  Widget _buildInfoRow(IconData icon, String title, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text('$title:', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
+          Icon(icon, size: 24, color: Colors.blueAccent),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Text(
+              '$title:',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
         ],
       ),
     );

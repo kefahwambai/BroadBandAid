@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'signUpScreen.dart';
 import 'home.dart';
+import 'signUpScreen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? selectedPlan; 
+  const LoginScreen({Key? key, this.selectedPlan}) : super(key: key);
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -16,6 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
 
+  final storage = const FlutterSecureStorage();
+  DateTime? lastActivityTime;
+
   @override
   void dispose() {
     emailController.dispose();
@@ -24,55 +29,97 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginUser() async {
-  final String apiUrl = 'http://localhost:8081/api/user-login';
+    const String apiUrl = 'http://localhost:8081/api/user-login';
 
-  if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-    _showMessage("Please enter email and password.");
-    return;
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      _showMessage("Please enter email and password.");
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": emailController.text,
+          "password": passwordController.text,
+        }),
+      );
+
+      setState(() {
+        isLoading = false;
+      });
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData.containsKey('token') &&
+            responseData.containsKey('user')) {
+          String token = responseData['token'];
+          int userId = responseData['user']['id'];
+
+          await storage.write(key: 'auth_token', value: token);
+
+          lastActivityTime = DateTime.now();
+
+          _showMessage("Login successful!", success: true);
+
+          if (widget.selectedPlan != null) {
+            await _updatePlan(userId, widget.selectedPlan!);
+          }
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen(userId: userId)),
+          );
+        } else {
+          _showMessage("Unexpected server response.");
+        }
+      } else {
+        final responseData = jsonDecode(response.body);
+        _showMessage(responseData['message'] ?? "Invalid email or password.");
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      _showMessage("Network error. Please try again later.");
+    }
   }
 
-  setState(() {
-    isLoading = true;
-  });
-
+Future<void> _updatePlan(int userId, Map<String, dynamic> plan) async {
   try {
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {"Content-Type": "application/json"},
+    DateTime now = DateTime.now();
+
+    int timeLimit = plan['timeLimit']; 
+    DateTime expiryDate = now.add(Duration(hours: timeLimit));
+
+    final response = await http.put(
+      Uri.parse('http://localhost:8081/api/update-plan'),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        "email": emailController.text,
-        "password": passwordController.text
+        'userId': userId,
+        'planId': plan['id'],
+        'planLimit': plan['dataLimit'],
+        'timeLimit': timeLimit,
+        'expiryDate': expiryDate.toIso8601String(), 
+        'dataLimit': plan['dataLimit']
       }),
     );
 
-    setState(() {
-      isLoading = false;
-    });
-
     if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      int userId = responseData['user']['id']; 
-
-      _showMessage("Login successful!", success: true);
-
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder: (context) => HomeScreen(userId: userId))
-        
-      );
-
+      print('Plan updated successfully');
     } else {
-      final responseData = jsonDecode(response.body);
-      _showMessage(responseData['message'] ?? "Invalid email or password.");
+      print('Failed to update plan: ${response.body}');
     }
   } catch (e) {
-    setState(() {
-      isLoading = false;
-    });
-    _showMessage("Network error. Please try again later.");
+    print('Error updating plan: $e');
   }
 }
-
 
 
   void _showMessage(String message, {bool success = false}) {
@@ -82,6 +129,30 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: success ? Colors.green : Colors.red,
       ),
     );
+  }
+
+  void _logoutUser() async {
+    await storage.delete(key: 'auth_token');
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+  }
+
+  void _updateLastActivityTime() {
+    lastActivityTime = DateTime.now();
+  }
+
+  void _checkInactivity() {
+    Future.delayed(Duration(minutes: 1), () {
+      if (lastActivityTime != null) {
+        final timeElapsed = DateTime.now().difference(lastActivityTime!);
+        if (timeElapsed.inMinutes >= 60) {
+          _logoutUser();
+        }
+      }
+      _checkInactivity();
+    });
   }
 
   @override
@@ -108,6 +179,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 labelText: "Email",
                 border: OutlineInputBorder(),
               ),
+              keyboardType: TextInputType.emailAddress,
+              onChanged: (value) => _updateLastActivityTime(), 
             ),
             const SizedBox(height: 15),
             TextFormField(
@@ -117,13 +190,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 labelText: "Password",
                 border: OutlineInputBorder(),
               ),
+              onChanged: (value) => _updateLastActivityTime(), 
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: isLoading ? null : _loginUser,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueAccent,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
               child: isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
@@ -132,8 +207,11 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 10),
             TextButton(
               onPressed: () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => const SignupScreen()));
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SignupScreen()),
+                );
               },
               child: const Text("Don't have an account? Sign Up"),
             ),

@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'loginScreen.dart';
 import 'diagnostic.dart';
 import 'upgradePlan.dart';
-
 
 class HomeScreen extends StatefulWidget {
   final int userId;
@@ -19,6 +18,9 @@ class _HomeScreenState extends State<HomeScreen> {
   double usagePercentage = 0.0;
   bool isLoading = true;
   int? userId;
+  String planName = '';
+  String timeLimit = '';
+  String provider = '';
   final storage = FlutterSecureStorage();
 
   @override
@@ -30,12 +32,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> fetchUserInfo() async {
     try {
       String? token = await storage.read(key: 'auth_token');
+
       if (token != null) {
         final decodedToken = Jwt.parseJwt(token);
+
+        int extractedUserId = decodedToken['id'] ?? 0;
+
+        if (extractedUserId == 0) {
+          print("Invalid user ID parsed from JWT.");
+          return;
+        }
+
         setState(() {
-          userId = decodedToken['userId'];
+          userId = extractedUserId;
         });
+
         fetchDataUsage();
+        fetchPlanDetails();
       } else {
         throw Exception('Token not found');
       }
@@ -47,14 +60,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _logoutUser() async {
+    await storage.delete(key: 'auth_token');
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+  }
+
   Future<void> fetchDataUsage() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:8081/api/usage?userId=$userId'));
+      final response = await http
+          .get(Uri.parse('http://localhost:8081/api/usage?userId=$userId'));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         setState(() {
-          usagePercentage = double.parse(data['usage']['usagePercentage'].replaceAll('%', ''));
+          usagePercentage = double.tryParse(
+                  data['usage']['usagePercentage'].replaceAll('%', '')) ??
+              0.0;
           isLoading = false;
         });
       } else {
@@ -68,9 +93,30 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> fetchPlanDetails() async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://localhost:8081/api/user-plan?userId=$userId'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          planName = data['plan']['name'];
+          timeLimit = data['plan']['timeLimit'].toString();
+          provider = data['plan']['provider'];
+        });
+      } else {
+        throw Exception('Failed to load plan details');
+      }
+    } catch (e) {
+      print("Error fetching plan details: $e");
+    }
+  }
+
   Future<void> runDiagnostics() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:8081/api/diagnostic?userId=$userId'));
+      final response = await http.get(
+          Uri.parse('http://localhost:8081/api/diagnostic?userId=$userId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         Navigator.push(
@@ -87,87 +133,91 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('BroadBandAid'),
-    ),
-    body: isLoading
-        ? Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(  // Wrap Column with SingleChildScrollView
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Dashboard',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 20),
-
-                  // Grid Layout for Options
-                  GridView(
-                    shrinkWrap: true, // Make the GridView occupy only required space
-                    physics: NeverScrollableScrollPhysics(), // Disable GridView scrolling
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('BroadBandAid'),
+      ),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
+                    Text(
+                      'Your Dashboard',
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                    children: [
-                      // _buildCard(
-                      //   title: 'Usage Details',
-                      //   icon: Icons.bar_chart,
-                      //   color: Colors.blue,
-                      //   onTap: () {
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) => UsageScreen(userId: userId!),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
+                    SizedBox(height: 50),
+                    _buildCard(
+                      title: 'Plan Details',
+                      icon: Icons.circle,
+                      color: Colors.grey,
+                      onTap: () {},
+                      extraText:
+                          'Plan: $planName\nProvider: $provider\nFor: $timeLimit hr',
+                    ),
+                    if (usagePercentage >= 80)
                       _buildCard(
-                        title: 'Run Diagnostics',
-                        icon: Icons.health_and_safety,
-                        color: Colors.green,
-                        onTap: runDiagnostics,
+                        title: 'Upgrade Plan',
+                        icon: Icons.upgrade,
+                        color: Colors.red,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PlanUpgradeScreen(),
+                            ),
+                          );
+                        },
                       ),
-                      _buildCard(
-                        title: 'Remaining Data',
-                        icon: Icons.data_usage,
-                        color: Colors.orange,
-                        onTap: () {},
-                        extraText: '${(100 - usagePercentage).toStringAsFixed(1)}% Remaining',
-                      ),
-                      if (usagePercentage >= 80)
-                        _buildCard(
-                          title: 'Upgrade Plan',
-                          icon: Icons.upgrade,
-                          color: Colors.red,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PlanUpgradeScreen(),
-                              ),
-                            );
-                          },
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: _buildCard(
+                            title: 'Run Diagnostics',
+                            icon: Icons.health_and_safety,
+                            color: Colors.green,
+                            onTap: runDiagnostics,
+                          ),
                         ),
-                    ],
-                  ),
-                ],
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: _buildCard(
+                            title: 'Remaining Data',
+                            icon: Icons.data_usage,
+                            color: Colors.orange,
+                            onTap: () {},
+                            extraText:
+                                '${(100 - usagePercentage).toStringAsFixed(1)}% Remaining',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-  );
-}
+    );
+  }
 
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    String? extraText,
+  }) {
+    if (extraText != null) {}
 
-  Widget _buildCard({required String title, required IconData icon, required Color color, required VoidCallback onTap, String? extraText}) {
     return GestureDetector(
       onTap: onTap,
       child: Card(
@@ -180,13 +230,27 @@ Widget build(BuildContext context) {
             color: color.withOpacity(0.2),
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 40, color: color),
               SizedBox(height: 10),
-              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Flexible(
+                fit: FlexFit.loose,
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
               if (extraText != null)
-                Text(extraText, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Text(
+                    extraText,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
             ],
           ),
         ),

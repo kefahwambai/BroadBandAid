@@ -6,7 +6,7 @@ import 'signUpScreen.dart';
 import 'home.dart';
 
 class PlanUpgradeScreen extends StatefulWidget {
-  final String? userId; 
+  final String? userId;
 
   PlanUpgradeScreen({this.userId});
 
@@ -17,17 +17,12 @@ class PlanUpgradeScreen extends StatefulWidget {
 class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
   List<dynamic> plans = [];
   bool isLoading = true;
+  Map<String, dynamic>? selectedPlan; 
 
   @override
   void initState() {
     super.initState();
-    if (widget.userId == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navigateToAuth(context);
-      });
-    } else {
-      fetchPlans();
-    }
+    fetchPlans();
   }
 
   Future<void> fetchPlans() async {
@@ -43,7 +38,22 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
     }
   }
 
-  void _navigateToAuth(BuildContext context) {
+  String convertTime(int timeLimitInHours) {
+    if (timeLimitInHours < 24) {
+      return '${timeLimitInHours}hr'; 
+    } else if (timeLimitInHours >= 24 && timeLimitInHours < 168) {
+      int days = timeLimitInHours ~/ 24;
+      return '${days}d'; 
+    } else if (timeLimitInHours >= 168 && timeLimitInHours < 720) {
+      int weeks = timeLimitInHours ~/ 168;
+      return '${weeks}w';
+    } else {
+      int months = timeLimitInHours ~/ 720;
+      return '${months}mo'; 
+    }
+  }
+
+  void _navigateToAuth(BuildContext context, Map<String, dynamic> plan) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -55,7 +65,11 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginScreen(selectedPlan: plan),
+                  ),
+                );
               },
               child: const Text("Login"),
             ),
@@ -63,7 +77,11 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (context) => const SignupScreen()));
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SignupScreen(selectedPlan: plan),
+                  ),
+                );
               },
               child: const Text("Sign Up"),
             ),
@@ -73,57 +91,93 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
     );
   }
 
+  Future<void> _choosePlan(Map<String, dynamic> plan) async {
+    if (widget.userId == null) {
+      _navigateToAuth(context, plan); 
+      return;
+    }
+
+    DateTime now = DateTime.now();
+
+    int timeLimit = plan['timeLimit']; 
+    DateTime expiryDate = now.add(Duration(hours: timeLimit));
+
+    try {
+      final response = await http.put(
+        Uri.parse('http://localhost:8081/api/update-plan'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': widget.userId,
+          'planId': plan['id'],
+          'planLimit': plan['dataLimit'],
+          'timeLimit': plan['timeLimit'],
+          'expiryDate': expiryDate.toIso8601String(), 
+          'dataLimit': plan['dataLimit']
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Plan updated to ${plan['name']}')),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(userId: int.parse(widget.userId!)),
+          ),
+        );
+      } else {
+        throw Exception('Failed to update plan');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choose a Package'),
+        title: const Text('Choose a Plan'),
         backgroundColor: Colors.blueAccent,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(12.0),
-              itemCount: plans.length,
-              itemBuilder: (context, index) {
-                final plan = plans[index];
-                return Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(12.0),
-                    title: Text(
-                      plan['name'],
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-                    ),
-                    subtitle: Text(
-                      'Data: ${plan['dataLimit']}GB | Price: KSH${plan['price']}',
-                      style: const TextStyle(fontSize: 16, color: Colors.black87),
-                    ),
-                    trailing: ElevatedButton.icon(
-                      onPressed: () {
-                        if (widget.userId == null) {
-                          _navigateToAuth(context);
-                        } else {
-                          _choosePlan(plan);
-                        }
-                      },
-                      icon: const Icon(Icons.check),
-                      label: const Text('Choose'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              const SizedBox(height: 30), 
+              Expanded(
+                child: ListView.separated(
+                  itemCount: plans.length,
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final plan = plans[index];
+                    return ListTile(
+                      title: Text(
+                        plan['name'],
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                      subtitle: Text(
+                        'Data: ${plan['dataLimit']}GB\nPrice: KSH ${plan['price']}\nTime: ${convertTime(plan['timeLimit'])}',
+                        style: const TextStyle(fontSize: 16, color: Colors.black87),
+                      ),
+                      trailing: ElevatedButton.icon(
+                        onPressed: () => _choosePlan(plan),
+                        icon: const Icon(Icons.check),
+                        label: const Text('Choose'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
     );
-  }
-
-  void _choosePlan(plan) {
-    print('Chosen plan: ${plan['name']}');
   }
 }

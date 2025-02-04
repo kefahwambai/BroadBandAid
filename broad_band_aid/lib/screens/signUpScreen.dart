@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'loginScreen.dart';
+import 'home.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? selectedPlan;
+  
+  const SignupScreen({Key? key, this.selectedPlan}) : super(key: key);
 
   @override
   _SignupScreenState createState() => _SignupScreenState();
@@ -30,27 +33,84 @@ class _SignupScreenState extends State<SignupScreen> {
       isLoading = true;
     });
 
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "name": nameController.text,
-        "email": emailController.text,
-        "password": passwordController.text,
-        "confirmPassword": confirmPasswordController.text
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": nameController.text,
+          "email": emailController.text,
+          "password": passwordController.text,
+          "confirmPassword": confirmPasswordController.text,
+        }),
+      );
 
-    setState(() {
-      isLoading = false;
-    });
+      setState(() {
+        isLoading = false;
+      });
 
-    if (response.statusCode == 201) {
-      _showMessage("Signup successful!", success: true);
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-    } else {
-      final responseData = jsonDecode(response.body);
-      _showMessage(responseData['message'] ?? "Signup failed");
+      if (response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData.containsKey('user')) {
+          int userId = responseData['user']['id'];
+
+          _showMessage("Signup successful!", success: true);
+
+          if (widget.selectedPlan != null) {
+            await _updatePlan(userId, widget.selectedPlan!);
+          }
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(userId: userId),
+            ),
+          );
+        } else {
+          _showMessage("Unexpected server response.");
+        }
+      } else {
+        final responseData = jsonDecode(response.body);
+        _showMessage(responseData['message'] ?? "Signup failed");
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      _showMessage("Network error. Please try again later.");
+    }
+  }
+
+  Future<void> _updatePlan(int userId, Map<String, dynamic> plan) async {
+
+    DateTime now = DateTime.now();
+
+    int timeLimit = plan['timeLimit']; 
+    DateTime expiryDate = now.add(Duration(hours: timeLimit));
+
+
+    try {
+      final response = await http.put(
+        Uri.parse('http://localhost:8081/api/update-plan'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'planId': plan['id'],
+          'planLimit': plan['dataLimit'],
+          'timeLimit': plan['timeLimit'],
+          'expiryDate': expiryDate.toIso8601String(), 
+          'dataLimit': plan['dataLimit']
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _showMessage("Plan updated to ${plan['name']}", success: true);
+      } else {
+        throw Exception('Failed to update plan');
+      }
+    } catch (e) {
+      _showMessage("Error updating plan: ${e.toString()}");
     }
   }
 
@@ -127,7 +187,15 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
             const SizedBox(height: 10),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context); 
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginScreen(),
+                  ),
+                );
+              },
               child: const Text("Already have an account? Login"),
             ),
           ],
