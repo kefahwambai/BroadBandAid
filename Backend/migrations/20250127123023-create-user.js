@@ -20,10 +20,6 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      confirmPassword: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
       planLimit: {
         type: Sequelize.INTEGER,
         allowNull: true,
@@ -42,7 +38,7 @@ module.exports = {
       },
       dataLimit: {
         type: Sequelize.FLOAT,
-        allowNull: false, 
+        allowNull: true, 
       },
       createdAt: {
         type: Sequelize.DATE,

@@ -73,7 +73,7 @@ export class UserAdd extends Action {
       planLimit: { required: false },
       timeLimit: { required: false },
       expiryDate: { required: false },
-      dataLimit: { required: true }, 
+      dataLimit: { required: false }, 
     };
   }
 
@@ -90,7 +90,6 @@ export class UserAdd extends Action {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        confirmPassword: hashedPassword,
         planLimit,
         dataUsed,
         expiryDate: params.expiryDate,

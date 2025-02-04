@@ -24,6 +24,10 @@ export const DEFAULT: { [namespace]: () => RoutesConfig } = {
       post: [
         { path: '/user-signup', action: "userAdd" },
         { path: '/user-login', action: "userLogin" },
+      
+      ],
+
+      put: [
         { path: '/update-plan', action: 'updatePlan' },
       ]
 

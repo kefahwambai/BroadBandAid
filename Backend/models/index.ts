@@ -1,7 +1,12 @@
 import { Sequelize } from 'sequelize';
 import dotenv from "dotenv";
+import { defineAssociations } from './association';
+import User from './user';
+import ISPPlan from './ispPlan';
 
 dotenv.config();
+
+
 
 export const sequelize = new Sequelize({
   host: process.env.DB_HOST,
@@ -17,4 +22,10 @@ export const sequelize = new Sequelize({
     acquire: 30000, 
     idle: 10000,
   },
+  
 });
+
+User.initModel(sequelize);
+ISPPlan.initModel(sequelize);
+
+defineAssociations(sequelize); 
