@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'home.dart'; 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'home.dart';
 import 'loginScreen.dart';
-import 'signUpScreen.dart'; 
-import 'upgradePlan.dart'; 
+import 'signUpScreen.dart';
+import 'upgradePlan.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -14,9 +16,9 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
-  final storage = FlutterSecureStorage();
   String? userId;
   bool isLoading = true;
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -87,10 +89,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(
+      return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
         ),
@@ -99,80 +102,123 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(""),
+        title: const Text("BroadBandAid"),
         centerTitle: true,
         backgroundColor: Colors.blueAccent,
         elevation: 0,
       ),
-      body: Container(
-        padding: const EdgeInsets.all(20.0),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blueAccent, Colors.lightBlue],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.wifi,
-              size: 100,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              "Welcome to BroadBandAid!",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 800) {
+            return _buildWebLayout(); 
+          } else {
+            return _buildMobileLayout(); 
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildWebLayout() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            color: Colors.blueAccent,
+            child: const Center(
+              child: Icon(
+                Icons.wifi,
+                size: 150,
                 color: Colors.white,
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _navigateToLogin(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.blueAccent,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text("Login"),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () => _navigateToSignup(context),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white),
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text("Sign Up"),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () => _navigateToUpgradePlan(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text("Choose Package"),
-            ),
-          ],
+          ),
+        ),
+        Expanded(
+          child: _buildButtons(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blueAccent, Colors.lightBlue],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
       ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.wifi,
+            size: 100,
+            color: Colors.white,
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            "Welcome to BroadBandAid!",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          _buildButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildButtons() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: () => _navigateToLogin(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blueAccent,
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          child: const Text("Login"),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: () => _navigateToSignup(context),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.blueAccent,
+            side: const BorderSide(color: Colors.blueAccent),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          child: const Text("Sign Up"),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: () => _navigateToUpgradePlan(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          child: const Text("Choose Package"),
+        ),
+      ],
     );
   }
 }
@@ -180,7 +226,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 class Jwt {
   static Map<String, dynamic> parseJwt(String token) {
     final parts = token.split('.');
-    if (parts.length != 3) throw FormatException('Invalid JWT token');
+    if (parts.length != 3) throw const FormatException('Invalid JWT token');
 
     final payload = _decodeBase64(parts[1]);
     return jsonDecode(payload);

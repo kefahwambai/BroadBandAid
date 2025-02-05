@@ -34,8 +34,9 @@ To get started with BroadBandAid, clone the repository and follow the instructio
 
 3. Set up the backend API to provide the necessary endpoints for the app:
 
+    ```bash
     /api/usage: Fetch user data usage information.
-    /api/user-plan: Fetch details of the user's current ISP plan.
+    /api/user-plan: Fetch details of the user current ISP plan.
     /api/diagnostic: Run diagnostics for internet health.
     /api/simulateUsage: Simulate data usage for testing purposes.
 

@@ -21,36 +21,68 @@ class DiagnosticsScreen extends StatelessWidget {
         backgroundColor: Colors.blueAccent,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 6,
-          shadowColor: Colors.blueAccent.withOpacity(0.2),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Your Network Health',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueAccent,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isWideScreen = constraints.maxWidth > 600;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isWideScreen ? 600 : double.infinity,
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isWideScreen ? 32.0 : 16.0,
+                  vertical: 16.0,
+                ),
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 6,
+                  shadowColor: Colors.blueAccent.withOpacity(0.2),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Your Network Health',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                        const Divider(thickness: 1, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        _buildInfoRow(
+                          Icons.speed,
+                          'Ping',
+                          '${result['connectivity']['ping']} ms',
+                        ),
+                        _buildInfoRow(
+                          Icons.signal_cellular_alt,
+                          'Signal Strength',
+                          '${result['connectivity']['signalStrength']} dBm',
+                        ),
+                        _buildInfoRow(
+                          Icons.data_usage,
+                          'Usage',
+                          '${double.parse(result['usage']['usagePercentage'].replaceAll('%', '')).round()}%',
+                        ),
+                        const SizedBox(height: 20),
+                        _buildRecommendations('Tips:', recommendationList),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
                 ),
-                const Divider(thickness: 1, color: Colors.grey),
-                const SizedBox(height: 16),
-                _buildInfoRow(Icons.speed, 'Ping', '${result['connectivity']['ping']} ms'),
-                _buildInfoRow(Icons.signal_cellular_alt, 'Signal Strength', '${result['connectivity']['signalStrength']} dBm'),
-                _buildInfoRow(Icons.data_usage, 'Usage', '${double.parse(result['usage']['usagePercentage'].replaceAll('%', '')).round()}%'),
-                _buildRecommendations('Tips;', recommendationList), 
-                const SizedBox(height: 27),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -59,7 +91,6 @@ class DiagnosticsScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 24, color: Colors.blueAccent),
           const SizedBox(width: 12),
@@ -76,17 +107,15 @@ class DiagnosticsScreen extends StatelessWidget {
           ),
           Expanded(
             flex: 3,
-            child: SingleChildScrollView(
-              child: Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black54,
-                ),
-                overflow: TextOverflow.visible,
-                maxLines: 5,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -95,55 +124,41 @@ class DiagnosticsScreen extends StatelessWidget {
   }
 
   Widget _buildRecommendations(String title, List<String> recommendations) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.recommend, size: 24, color: Colors.blueAccent),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.recommend, size: 24, color: Colors.blueAccent),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: recommendations.map((recommendation) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      recommendation.trim(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black54,
-
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    ),
-  );
-}
-
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 4.0,
+            children: recommendations.map((recommendation) {
+              return Chip(
+                label: Text(
+                  recommendation.trim(),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                ),
+                backgroundColor: Colors.grey[200],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 }

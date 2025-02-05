@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'loginScreen.dart';
 import 'diagnostic.dart';
 import 'welcomeScreen.dart';
 import 'upgradePlan.dart';
@@ -68,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
         String extractedUserName = decodedToken['name'];
 
         if (extractedUserId == 0 || extractedUserName == Null) {
-          print("Invalid user Idetails parsed from JWT.");
+          print("Invalid user details parsed from JWT.");
           return;
         }
 
@@ -211,9 +212,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isLargeScreen = screenWidth > 600;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('BroadBandAid'),
+        title: Text('BroadBandAid', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: Icon(Icons.logout),
@@ -224,67 +228,76 @@ class _HomeScreenState extends State<HomeScreen> {
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      'Welcome ${userName}\n\n Your Dashboard',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
+              padding: EdgeInsets.symmetric(
+                horizontal: isLargeScreen ? 100 : 16,
+                vertical: 20,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Welcome, $userName!',
+                    style: TextStyle(
+                      fontSize: isLargeScreen ? 32 : 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueGrey[800],
                     ),
-                    SizedBox(height: 55),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your Dashboard',
+                    style: TextStyle(
+                      fontSize: isLargeScreen ? 24 : 18,
+                      color: Colors.blueGrey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  _buildCard(
+                    title: 'Plan Details',
+                    color: Colors.blueGrey[800]!,
+                    extraText:
+                        '$planName for $bundle GB\nExpires in: $timeLimit\nBalance: KES $price/-',
+                  ),
+                  const SizedBox(height: 20),
+                  if (usagePercentage >= 80)
                     _buildCard(
-                      title: 'Plan Details',
-                      color: Colors.grey,
-                      onTap: () {},
-                      extraText:
-                          '$planName for $bundle mb/s\nElapses after: $timeLimit\n Balance Due: KES $price/-',
+                      title: 'Upgrade Plan',
+                      color: Colors.red[400]!,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PlanUpgradeScreen(userId: userId.toString()),
+                          ),
+                        );
+                      },
                     ),
-                    SizedBox(height: 20),
-                    if (usagePercentage >= 80)
-                      _buildCard(
-                        title: 'Upgrade Plan',
-                        color: Colors.red,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  PlanUpgradeScreen(userId: userId.toString()),
-                            ),
-                          );
-                        },
+                  if (usagePercentage >= 80) const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        flex: isLargeScreen ? 2 : 1,
+                        child: _buildCard(
+                          title: 'Check Data Health',
+                          color: Colors.teal[400]!,
+                          onTap: runDiagnostics,
+                        ),
                       ),
-                    SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: _buildCard(
-                            title: 'Check\n Data Health',
-                            color: const Color.fromARGB(255, 2, 141, 162),
-                            onTap: runDiagnostics,
-                          ),
+                      SizedBox(width: isLargeScreen ? 20 : 10),
+                      Expanded(
+                        flex: isLargeScreen ? 2 : 1,
+                        child: _buildCard(
+                          title: 'Remaining Data',
+                          color: Colors.blueGrey[800]!,
+                          extraText: '${(100 - usagePercentage).round()}% Remaining',
                         ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: _buildCard(
-                            title: 'Remaining Data',
-                            color: Colors.grey,
-                            onTap: () {},
-                            extraText:
-                                '${(100 - usagePercentage).round()}% Remaining',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
     );
@@ -293,47 +306,46 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCard({
     required String title,
     required Color color,
-    required VoidCallback onTap,
     String extraText = '',
-    IconData? icon,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        color: color,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 6,
-        shadowColor: color.withOpacity(0.2),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color, color.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: EdgeInsets.all(20),
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) Icon(icon, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      extraText,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
+              if (extraText.isNotEmpty) const SizedBox(height: 8),
+              if (extraText.isNotEmpty)
+                Text(
+                  extraText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
             ],
           ),
         ),
