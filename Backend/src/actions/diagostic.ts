@@ -19,7 +19,8 @@ export class Diagnostics extends Action {
 
     try {
       const usageInstance = new Usage();
-      const usageResponse: { usage?: object; error?: string } = { usage: {} };
+      const usageResponse: { usage?: { recommendation?: string }; error?: string } = { usage: {} };
+
 
       await usageInstance.run({ params, response: usageResponse });
 
@@ -28,13 +29,31 @@ export class Diagnostics extends Action {
         return;
       }
 
+      const networkRecommendations = [];
+
+      if (pingResult > 100) {
+        networkRecommendations.push("High latency detected! Consider using a wired connection or VPN.");
+      } else if (pingResult > 50) {
+        networkRecommendations.push("Moderate latency detected. Close background apps using bandwidth.");
+      }
+
+      if (signalStrength < -80) {
+        networkRecommendations.push("Very weak signal. Try moving closer to the router.");
+      } else if (signalStrength < -60) {
+        networkRecommendations.push("Weak signal detected. Reduce interference from walls/devices.");
+      }
+
+      const finalRecommendations = [         
+        ...networkRecommendations, usageResponse.usage?.recommendation,
+      ].filter(Boolean).join(" ");
+
       response.data = {
         connectivity: {
           ping: pingResult,
           signalStrength,
         },
         usage: usageResponse.usage,
-        recommendations: 'Monitor usage and optimize your plan as needed.',
+        recommendations: finalRecommendations,
       };
     } catch (error) {
       response.error = 'An error occurred while running diagnostics.';

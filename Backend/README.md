@@ -68,7 +68,6 @@ Create a .env file in the root of your project directory, and fill in the necess
 
 1. Start the Actionhero server in development mode:
   
-  ```bash
    npm run dev
 
 This will compile TypeScript and start the Actionhero server. The server will be available on the port specified in the configuration (dPORT has to be set at localhost:8081 to avoid conflict with the flutter appilcation).

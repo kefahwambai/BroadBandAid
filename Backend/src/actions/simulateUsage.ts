@@ -33,7 +33,7 @@ export class SimulateUsage extends Action {
         throw new Error("Invalid user data: Missing `planLimit` or `dataUsed`.");
       }
 
-      const simulatedUsageIncrease = 0.025; 
+      const simulatedUsageIncrease = (Math.random() * 0.04) + 0.01; 
       let newUsage = parseFloat(user.dataUsed) + simulatedUsageIncrease;
 
       if (newUsage > user.planLimit) {
@@ -49,9 +49,9 @@ export class SimulateUsage extends Action {
 
       response.usage = {
         userId,
-        dataUsed: newUsage.toFixed(2),
+        dataUsed: Math.round(newUsage),
         planLimit: user.planLimit,
-        usagePercentage: `${usagePercentage.toFixed(1)}%`,
+        usagePercentage: `${Math.round(usagePercentage)}%`,
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
