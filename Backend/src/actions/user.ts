@@ -32,7 +32,7 @@ export class UserLogin extends Action {
       }
   
       const token = jwt.sign(
-        { id: user.id, email: user.email },
+        { id: user.id, name: user.name },
         process.env.JWT_SECRET as string,
         { expiresIn: '1h' }
       );

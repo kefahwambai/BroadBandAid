@@ -64,13 +64,31 @@ Create a .env file in the root of your project directory, and fill in the necess
     DB_PORT=5432
     NODE_ENV=development
 
+### Seed Data
+
+To quickly populate the database with sample data, you can use the seed files provided in the project. This is especially useful when you're setting up the application for the first time or testing it with predefined data.
+
+## To Seed the Database:
+
+1.Ensure you have the necessary environment variables configured (e.g., database credentials, etc.).
+
+2 Run the seed command:
+
+   npx sequelize-cli db:seed:all
+
+This will run all the seed files and populate the database with the sample plan data.
+
+3. Verify the data:
+
+You can verify the seeded data by checking the relevant tables in your database or by hitting some of the API endpoints that depend on the data (/api/plan).
+
 ## To Run:
 
 1. Start the Actionhero server in development mode:
   
    npm run dev
 
-This will compile TypeScript and start the Actionhero server. The server will be available on the port specified in the configuration (dPORT has to be set at localhost:8081 to avoid conflict with the flutter appilcation).
+This will compile TypeScript and start the Actionhero server. The server will be available on the port specified in the configuration (PORT has to be set at localhost:8081 to avoid conflict with the flutter appilcation).
 
 
 ## API Documentation:
