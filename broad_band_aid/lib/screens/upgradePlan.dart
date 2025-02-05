@@ -1,5 +1,5 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'loginScreen.dart';
@@ -8,8 +8,9 @@ import 'home.dart';
 
 class PlanUpgradeScreen extends StatefulWidget {
   final String? userId;
+  final bool requireAuth;
 
-  const PlanUpgradeScreen({super.key, this.userId});
+  const PlanUpgradeScreen({super.key, this.userId, this.requireAuth = true});
 
   @override
   _PlanUpgradeScreenState createState() => _PlanUpgradeScreenState();
@@ -20,7 +21,6 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
   bool isLoading = true;
   Map<String, dynamic>? selectedPlan;
   final storage = FlutterSecureStorage();
-  double usagePercentage = 0.0;
 
   @override
   void initState() {
@@ -30,9 +30,6 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
 
   Future<void> fetchPlans() async {
     try {
-      String? token = await storage.read(key: 'auth_token');
-      if (token == null) throw Exception('Authentication token not found');
-
       final response = await http.get(
         Uri.parse('http://localhost:8081/api/plans'),
       );
@@ -54,18 +51,11 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
     }
   }
 
-  String convertTime(int timeLimitInHours) {
-    if (timeLimitInHours < 24) {
-      return '${timeLimitInHours}hr';
-    } else if (timeLimitInHours >= 24 && timeLimitInHours < 168) {
-      int days = timeLimitInHours ~/ 24;
-      return '${days}d';
-    } else if (timeLimitInHours >= 168 && timeLimitInHours < 720) {
-      int weeks = timeLimitInHours ~/ 168;
-      return '${weeks}w';
+  void _choosePlan(Map<String, dynamic> plan) {
+    if (widget.userId == null) {
+      _navigateToAuth(context, plan);
     } else {
-      int months = timeLimitInHours ~/ 720;
-      return '${months}mo';
+      _upgradePlan(plan);
     }
   }
 
@@ -107,17 +97,7 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
     );
   }
 
-  Future<void> _choosePlan(Map<String, dynamic> plan) async {
-    if (widget.userId == null) {
-      _navigateToAuth(context, plan);
-      return;
-    }
-
-    DateTime now = DateTime.now();
-
-    int timeLimit = plan['timeLimit'];
-    DateTime expiryDate = now.add(Duration(hours: timeLimit));
-
+  Future<void> _upgradePlan(Map<String, dynamic> plan) async {
     try {
       final response = await http.put(
         Uri.parse('http://localhost:8081/api/update-plan'),
@@ -128,7 +108,7 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
           'planLimit': plan['dataLimit'],
           'timeLimit': plan['timeLimit'],
           'expiryDate': DateTime.now().add(Duration(hours: plan['timeLimit'])).toIso8601String(),
-          'dataLimit': plan['dataLimit']
+          'dataLimit': plan['dataLimit'],
         }),
       );
 
@@ -136,10 +116,6 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Plan updated to ${plan['name']}')),
         );
-
-        setState(() {
-          usagePercentage = 0.0;
-        });
 
         Navigator.pushReplacement(
           context,
@@ -159,7 +135,8 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWeb = MediaQuery.of(context).size.width > 600; 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth > 600;
 
     return Scaffold(
       appBar: AppBar(
@@ -174,84 +151,99 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
               ),
             )
           : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: isWeb ? 800 : double.infinity),
-                  child: ListView.separated(
-                    itemCount: plans.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final plan = plans[index];
-                      return Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                plan['name'],
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueAccent,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Data: ${plan['dataLimit']}GB',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Price: KSH ${plan['price']}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Time: ${convertTime(plan['timeLimit'])}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Center(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _choosePlan(plan),
-                                  icon: const Icon(Icons.check, size: 20),
-                                  label: const Text(
-                                    'Choose Plan',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+              padding: EdgeInsets.symmetric(
+                horizontal: isWideScreen ? 32 : 16,
+                vertical: 16,
+              ),
+              child: isWideScreen
+                  ? GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.5,
+                      ),
+                      itemCount: plans.length,
+                      itemBuilder: (context, index) {
+                        final plan = plans[index];
+                        return _buildPlanCard(plan, isWideScreen);
+                      },
+                    )
+                  : ListView.separated(
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      itemCount: plans.length,
+                      itemBuilder: (context, index) {
+                        final plan = plans[index];
+                        return _buildPlanCard(plan, isWideScreen);
+                      },
+                    ),
+            ),
+    );
+  }
+
+  Widget _buildPlanCard(Map<String, dynamic> plan, bool isWideScreen) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blueAccent.withOpacity(0.8), Colors.blueAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              plan['name'],
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Data: ${plan['dataLimit']}GB',
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Price: KSH ${plan['price']}',
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton(
+                onPressed: () => _choosePlan(plan),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                ),
+                child: const Text(
+                  'Choose Plan',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }

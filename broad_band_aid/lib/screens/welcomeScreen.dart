@@ -75,20 +75,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   void _navigateToUpgradePlan(BuildContext context) {
-    if (userId != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PlanUpgradeScreen(userId: userId!),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlanUpgradeScreen(
+          userId: userId,
+          requireAuth: false, 
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("User ID not found. Please log in again.")),
-      );
-    }
+      ),
+    );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -110,9 +106,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 800) {
-            return _buildWebLayout(); 
+            return _buildWebLayout();
           } else {
-            return _buildMobileLayout(); 
+            return _buildMobileLayout();
           }
         },
       ),
@@ -196,8 +192,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         OutlinedButton(
           onPressed: () => _navigateToSignup(context),
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.blueAccent,
-            side: const BorderSide(color: Colors.blueAccent),
+            foregroundColor: Color.fromARGB(255, 1, 221, 255),
+            side: const BorderSide(color: Color.fromARGB(255, 1, 221, 255)),
             padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30),
