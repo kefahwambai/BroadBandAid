@@ -57,10 +57,7 @@ export class Usage extends Action {
     return this.getUpgradePlan(predictedValue * 20);
   }
 
-  async run(data: {
-    params: { userId: string };
-    response: { error?: string; usage?: object };
-  }) {
+  async run(data: { params: { userId: string }; response: { error?: string; usage?: object }}) {
     const { params, response } = data;
     const { userId } = params;
 

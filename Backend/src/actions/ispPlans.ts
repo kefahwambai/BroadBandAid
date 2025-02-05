@@ -1,46 +1,46 @@
-import { Action } from 'actionhero';
+import { Action, api } from 'actionhero';
 import ispPlans from '../../models/ispPlan';
 import User from '../../models/user';
 import ISPPlan from '../../models/ispPlan';
 
 export class UpdatePlan extends Action {
-    constructor() {
-      super();
-      this.name = 'updatePlan';
-      this.description = 'Update user plan limit';
-      this.inputs = {
-        userId: { required: true },
-        planId: {required: true},
-        planLimit: { required: true },
-        timeLimit: { required: true }, 
-        expiryDate: {required: true},
-        dataLimit: {required: true}
-      };
-    }
-  
-    async run({ params, response }: { params: any; response: any }) {
-      try {
-        const user = await User.findOne({ where: { id: Number(params.userId) } });
-        if (!user) {
-          response.success = false;
-          response.message = 'User not found.';
-          return;
-        }
-        user.planId = params.planId;
-        user.planLimit = params.planLimit;
-        user.timeLimit = params.timeLimit;
-        user.expiryDate = params.expiryDate;
-        user.dataLimit = params.dataLimit;
-        await user.save();
-  
-        response.success = true;
-        response.message = 'Plan updated successfully.';
-      } catch (error: any) {
-        response.success = false;
-        response.message = `Failed to update plan: ${error.message}`;
+  constructor() {
+    super();
+    this.name = "updatePlan";
+    this.description = "Update user plan and reset data usage.";
+    this.inputs = {
+      userId: { required: true },
+      planId: { required: true },
+      planLimit: { required: true },
+      timeLimit: { required: true },
+      expiryDate: { required: true },
+      dataLimit: { required: true },
+    };
+  }
+
+  async run({ params, response }: { params: { userId: string; planId: string; planLimit: number; timeLimit: number; expiryDate: string; dataLimit: number }; response: { error?: string; message?: string } }) {
+    const { userId, planId, planLimit, timeLimit, expiryDate, dataLimit } = params;
+
+    try {
+      const updateQuery = `
+        UPDATE "Users"
+        SET "planId" = $1, "planLimit" = $2, "timeLimit" = $3, "expiryDate" = $4, "dataLimit" = $5, "dataUsed" = 0
+        WHERE "id" = $6;
+      `;
+      await api.database.pool.query(updateQuery, [planId, planLimit, timeLimit, expiryDate, dataLimit, userId]);
+
+      response.message = "Plan updated successfully.";
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Error updating plan:", error.message);
+        response.error = error.message;
+      } else {
+        console.error("Unexpected error:", error);
+        response.error = "An unexpected error occurred.";
       }
     }
   }
+}
 
 export class IspPlan extends Action {
     constructor() {

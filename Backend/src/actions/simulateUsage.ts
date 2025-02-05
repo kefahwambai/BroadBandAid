@@ -10,13 +10,7 @@ export class SimulateUsage extends Action {
     };
   }
 
-  async run({
-    params,
-    response,
-  }: {
-    params: { userId: string };
-    response: { error?: string; usage?: object };
-  }) {
+  async run({ params, response }: { params: { userId: string }; response: { error?: string; usage?: object } }) {
     const { userId } = params;
 
     try {
@@ -25,7 +19,7 @@ export class SimulateUsage extends Action {
       }
 
       const { rows } = await api.database.pool.query(
-        "SELECT \"planLimit\", \"dataUsed\" FROM \"Users\" WHERE \"id\" = $1",
+        'SELECT "planLimit", "dataUsed" FROM "Users" WHERE "id" = $1',
         [userId]
       );
 
@@ -39,9 +33,8 @@ export class SimulateUsage extends Action {
         throw new Error("Invalid user data: Missing `planLimit` or `dataUsed`.");
       }
 
-      const simulatedUsageIncrease = Math.floor(Math.random() * 10) + 1; 
+      const simulatedUsageIncrease = 0.025; 
       let newUsage = parseFloat(user.dataUsed) + simulatedUsageIncrease;
-      
 
       if (newUsage > user.planLimit) {
         newUsage = user.planLimit;
@@ -49,18 +42,8 @@ export class SimulateUsage extends Action {
 
       const usagePercentage = (newUsage / user.planLimit) * 100;
 
-      if (usagePercentage >= 100) {
-        response.usage = {
-          userId,
-          dataUsed: newUsage.toFixed(2),
-          planLimit: user.planLimit,
-          usagePercentage: `${usagePercentage.toFixed(1)}%`,
-        };
-        return;  
-      }
-
       await api.database.pool.query(
-        "UPDATE \"Users\" SET \"dataUsed\" = $1 WHERE \"id\" = $2",
+        'UPDATE "Users" SET "dataUsed" = $1 WHERE "id" = $2',
         [newUsage, userId]
       );
 
@@ -70,7 +53,6 @@ export class SimulateUsage extends Action {
         planLimit: user.planLimit,
         usagePercentage: `${usagePercentage.toFixed(1)}%`,
       };
-
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error("Error in simulateUsage:", error.message);
