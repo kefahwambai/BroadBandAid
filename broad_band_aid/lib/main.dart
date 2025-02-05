@@ -13,11 +13,12 @@ void main() async {
 class MyApp extends StatelessWidget {
   final String? token;
 
-  MyApp({this.token});
+  const MyApp({super.key, this.token});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'BroadBandAid',
       theme: ThemeData(
         primarySwatch: Colors.blue,

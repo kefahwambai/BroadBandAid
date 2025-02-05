@@ -7,7 +7,7 @@ import 'home.dart';
 class SignupScreen extends StatefulWidget {
   final Map<String, dynamic>? selectedPlan;
   
-  const SignupScreen({Key? key, this.selectedPlan}) : super(key: key);
+  const SignupScreen({super.key, this.selectedPlan});
 
   @override
   _SignupScreenState createState() => _SignupScreenState();

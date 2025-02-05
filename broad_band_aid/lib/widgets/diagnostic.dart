@@ -7,12 +7,12 @@ class DiagnosticWidget extends StatelessWidget {
   final Color iconColor;
 
   const DiagnosticWidget({
-    Key? key,
+    super.key,
     required this.title,
     required this.result,
     required this.icon,
     required this.iconColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -7,7 +7,7 @@ import 'signUpScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   final Map<String, dynamic>? selectedPlan; 
-  const LoginScreen({Key? key, this.selectedPlan}) : super(key: key);
+  const LoginScreen({super.key, this.selectedPlan});
 
   @override
   _LoginScreenState createState() => _LoginScreenState();

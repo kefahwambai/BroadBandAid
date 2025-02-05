@@ -3,13 +3,21 @@ import 'package:flutter/material.dart';
 class DiagnosticsScreen extends StatelessWidget {
   final Map<String, dynamic> result;
 
-  DiagnosticsScreen({required this.result});
+  const DiagnosticsScreen({super.key, required this.result});
 
   @override
   Widget build(BuildContext context) {
+    final recommendations = result['recommendations'] ?? 'No recommendations available.';
+
+    final recommendationList = recommendations
+        .toString()
+        .split(RegExp(r'[,.\n]'))
+        .where((item) => item.trim().isNotEmpty)
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diagnostics Results'),
+        title: const Text('Diagnostics'),
         backgroundColor: Colors.blueAccent,
         elevation: 0,
       ),
@@ -25,7 +33,7 @@ class DiagnosticsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Diagnostic Test Result',
+                  'Your Network Health',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -36,24 +44,9 @@ class DiagnosticsScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildInfoRow(Icons.speed, 'Ping', '${result['connectivity']['ping']} ms'),
                 _buildInfoRow(Icons.signal_cellular_alt, 'Signal Strength', '${result['connectivity']['signalStrength']} dBm'),
-                _buildInfoRow(Icons.data_usage, 'Usage', result['usage']['usagePercentage']),
-                _buildInfoRow(Icons.recommend, 'Recommendations', result['usage']['recommendation']),
-                const SizedBox(height: 24),
-                Center(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.home, size: 20),
-                    label: const Text('Back to Home'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildInfoRow(Icons.data_usage, 'Usage', '${double.parse(result['usage']['usagePercentage'].replaceAll('%', '')).round()}%'),
+                _buildRecommendations('Tips;', recommendationList), 
+                const SizedBox(height: 27),
               ],
             ),
           ),
@@ -83,19 +76,74 @@ class DiagnosticsScreen extends StatelessWidget {
           ),
           Expanded(
             flex: 3,
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
+            child: SingleChildScrollView(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black54,
+                ),
+                overflow: TextOverflow.visible,
+                maxLines: 5,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildRecommendations(String title, List<String> recommendations) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.recommend, size: 24, color: Colors.blueAccent),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: recommendations.map((recommendation) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      recommendation.trim(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    ),
+  );
+}
+
 }

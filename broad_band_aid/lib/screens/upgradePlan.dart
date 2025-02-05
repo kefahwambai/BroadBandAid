@@ -9,7 +9,7 @@ import 'home.dart';
 class PlanUpgradeScreen extends StatefulWidget {
   final String? userId;
 
-  PlanUpgradeScreen({this.userId});
+  const PlanUpgradeScreen({super.key, this.userId});
 
   @override
   _PlanUpgradeScreenState createState() => _PlanUpgradeScreenState();
@@ -20,6 +20,7 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
   bool isLoading = true;
   Map<String, dynamic>? selectedPlan; 
   final storage = FlutterSecureStorage();
+  double usagePercentage = 0.0; 
 
   @override
   void initState() {
@@ -30,8 +31,6 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
   try {
     String? token = await storage.read(key: 'auth_token');
     if (token == null) throw Exception('Authentication token not found');
-
-    print("Token: $token"); 
 
     final response = await http.get(
       Uri.parse('http://localhost:8081/api/plans'),
@@ -127,7 +126,7 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
           'planId': plan['id'],
           'planLimit': plan['dataLimit'],
           'timeLimit': plan['timeLimit'],
-          'expiryDate': expiryDate.toIso8601String(), 
+          'expiryDate': DateTime.now().add(Duration(hours: plan['timeLimit'])).toIso8601String(),
           'dataLimit': plan['dataLimit']
         }),
       );
@@ -136,6 +135,11 @@ class _PlanUpgradeScreenState extends State<PlanUpgradeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Plan updated to ${plan['name']}')),
         );
+
+         setState(() {
+         usagePercentage = 0.0;
+        });
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

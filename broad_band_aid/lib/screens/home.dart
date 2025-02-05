@@ -5,11 +5,12 @@ import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'loginScreen.dart';
 import 'diagnostic.dart';
+import 'welcomeScreen.dart';
 import 'upgradePlan.dart';
 
 class HomeScreen extends StatefulWidget {
   final int userId;
-  HomeScreen({required this.userId});
+  const HomeScreen({super.key, required this.userId});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -35,9 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _usageSimulationTimer;
   bool isLoading = true;
   int? userId;
+  String userName = '';
   String planName = '';
+  int? price;
   String timeLimit = '';
   String provider = '';
+  int? bundle;
   final storage = FlutterSecureStorage();
 
   @override
@@ -49,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _usageSimulationTimer?.cancel(); 
+    _usageSimulationTimer?.cancel();
     super.dispose();
   }
 
@@ -61,14 +65,16 @@ class _HomeScreenState extends State<HomeScreen> {
         final decodedToken = Jwt.parseJwt(token);
 
         int extractedUserId = decodedToken['id'] ?? 0;
+        String extractedUserName = decodedToken['name'];
 
-        if (extractedUserId == 0) {
-          print("Invalid user ID parsed from JWT.");
+        if (extractedUserId == 0 || extractedUserName == Null) {
+          print("Invalid user Idetails parsed from JWT.");
           return;
         }
 
         setState(() {
           userId = extractedUserId;
+          userName = extractedUserName;
         });
 
         fetchDataUsage();
@@ -88,22 +94,28 @@ class _HomeScreenState extends State<HomeScreen> {
     await storage.delete(key: 'auth_token');
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
+      MaterialPageRoute(builder: (context) => WelcomeScreen()),
     );
   }
 
   Future<void> fetchDataUsage() async {
     try {
-      final response = await http
-          .get(Uri.parse('http://localhost:8081/api/usage?userId=$userId'));
+      final response = await http.get(
+        Uri.parse('http://localhost:8081/api/usage?userId=$userId'),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        double usage = double.tryParse(
+                data['usage']['usagePercentage'].replaceAll('%', '')) ??
+            0.0;
+
+        if (usage < 0) usage = 0;
+        if (usage > 100) usage = 100;
+
         setState(() {
-          usagePercentage = double.tryParse(
-                  data['usage']['usagePercentage'].replaceAll('%', '')) ??
-              0.0;
+          usagePercentage = usage;
           isLoading = false;
         });
       } else {
@@ -126,6 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = jsonDecode(response.body);
         setState(() {
           planName = data['plan']['name'];
+          price = data['plan']['price'];
+          bundle = data['plan']['dataLimit'];
           timeLimit =
               formatTimeLimit(int.parse(data['plan']['timeLimit'].toString()));
           provider = data['plan']['provider'];
@@ -158,48 +172,54 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
- void _startDataUsageSimulation() {
-  if (_usageSimulationTimer != null && _usageSimulationTimer!.isActive) {
-    return;
-  }
+  void _startDataUsageSimulation() {
+    if (_usageSimulationTimer != null && _usageSimulationTimer!.isActive) {
+      return;
+    }
 
-  _usageSimulationTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/api/simulateUsage'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': widget.userId}),
-      );
+    _usageSimulationTimer =
+        Timer.periodic(Duration(seconds: 30), (timer) async {
+      try {
+        final response = await http.post(
+          Uri.parse('http://localhost:8081/api/simulateUsage'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'userId': widget.userId}),
+        );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
 
-        double currentUsagePercentage = double.tryParse(
+          double currentUsagePercentage = double.tryParse(
                   data['usage']['usagePercentage'].replaceAll('%', '')) ??
               0.0;
 
-        setState(() {
-          usagePercentage = currentUsagePercentage;
-        });
+          setState(() {
+            usagePercentage = currentUsagePercentage;
+          });
 
-        if (currentUsagePercentage >= 100) {
-          _usageSimulationTimer?.cancel(); 
+          if (currentUsagePercentage >= 100) {
+            _usageSimulationTimer?.cancel();
+          }
+        } else {
+          throw Exception('Failed to simulate data usage');
         }
-      } else {
-        throw Exception('Failed to simulate data usage');
+      } catch (e) {
+        print("Error simulating data usage: $e");
       }
-    } catch (e) {
-      print("Error simulating data usage: $e");
-    }
-  });
-}
+    });
+  }
 
-
-
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('BroadBandAid'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: _logoutUser,
+          ),
+        ],
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
@@ -212,42 +232,42 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const SizedBox(height: 20),
                     Text(
-                      'Your Dashboard',
+                      'Welcome ${userName}\n\n Your Dashboard',
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 50),
+                    SizedBox(height: 55),
                     _buildCard(
                       title: 'Plan Details',
-                      icon: Icons.circle,
                       color: Colors.grey,
                       onTap: () {},
                       extraText:
-                          'Plan: $planName\nProvider: $provider\nTime Limit: $timeLimit',
+                          '$planName for $bundle mb/s\nElapses after: $timeLimit\n Balance Due: KES $price/-',
                     ),
+                    SizedBox(height: 20),
                     if (usagePercentage >= 80)
                       _buildCard(
                         title: 'Upgrade Plan',
-                        icon: Icons.upgrade,
                         color: Colors.red,
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => PlanUpgradeScreen(userId: userId.toString()), 
+                              builder: (context) =>
+                                  PlanUpgradeScreen(userId: userId.toString()),
                             ),
                           );
                         },
                       ),
                     SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Expanded(
                           child: _buildCard(
-                            title: 'Data Health',
-                            icon: Icons.health_and_safety,
-                            color: Colors.green,
+                            title: 'Check\n Data Health',
+                            color: const Color.fromARGB(255, 2, 141, 162),
                             onTap: runDiagnostics,
                           ),
                         ),
@@ -255,11 +275,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildCard(
                             title: 'Remaining Data',
-                            icon: Icons.data_usage,
-                            color: Colors.orange,
+                            color: Colors.grey,
                             onTap: () {},
                             extraText:
-                                '${(100 - usagePercentage).toStringAsFixed(1)}% Remaining',
+                                '${(100 - usagePercentage).round()}% Remaining',
                           ),
                         ),
                       ],
@@ -273,44 +292,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCard({
     required String title,
-    required IconData icon,
     required Color color,
     required VoidCallback onTap,
-    String? extraText,
+    String extraText = '',
+    IconData? icon,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Card(
+        color: color,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 4,
-        child: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: color.withOpacity(0.2),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        elevation: 6,
+        shadowColor: color.withOpacity(0.2),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 40, color: color),
-              SizedBox(height: 10),
-              Flexible(
-                fit: FlexFit.loose,
-                child: Text(
-                  title,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+              if (icon != null) Icon(icon, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      extraText,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
                 ),
               ),
-              if (extraText != null)
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: Text(
-                    extraText,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
             ],
           ),
         ),

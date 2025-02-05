@@ -4,7 +4,7 @@ import '../models/isp_plan.dart';
 class ISPPlanCard extends StatelessWidget {
   final ISPPlan plan;
 
-  const ISPPlanCard({required this.plan});
+  const ISPPlanCard({super.key, required this.plan});
 
   @override
   Widget build(BuildContext context) {
